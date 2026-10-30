@@ -1,0 +1,7 @@
+vim parser_a.cpp;
+vim parser_b.cpp;
+g++ parser_a.cpp -o parser_a;
+g++ parser_b.cpp -o parser_b;
+./parser_a;
+./parser_b;
+

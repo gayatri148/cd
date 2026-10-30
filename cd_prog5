@@ -1,0 +1,6 @@
+vim calc.l;
+vim calc.y;
+lex calc.l;
+yacc -d calc.y;
+gcc y.tab.c lex.yy.c -o calc -lfl;
+./calc;

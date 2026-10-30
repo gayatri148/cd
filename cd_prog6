@@ -1,0 +1,6 @@
+vim expr.l;
+vim expr.y;
+yacc -d expr.y;
+lex expr.l;
+gcc y.tab.c lex.yy.c -o expr;
+./expr;

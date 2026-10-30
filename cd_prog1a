@@ -1,0 +1,75 @@
+%{
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+// Function to compute digit sum
+int digit_sum(const char *s) {
+int sum = 0;
+for (int i = 0; i < strlen(s); i++)
+sum += s[i] - '0';
+return sum;
+}
+// Check if digits are in ascending order
+int is_ascending(const char *s) {
+for (int i = 0; i < strlen(s) - 1; i++)
+if (s[i] > s[i+1])
+return 0;
+return 1;
+}
+// Check if binary string is divisible by 5
+int modulo5(const char *s) {
+int rem = 0;
+for (int i = 0; i < strlen(s); i++) {
+rem = (rem * 2 + (s[i] - '0')) % 5;
+}
+return rem;
+}
+// Check every block of 5 consecutive symbols has at least two 5s
+int at_least_two_fives(const char *s) {
+int len = strlen(s);
+if (len < 5)
+return 0; // Invalid if not enough digits
+for (int i = 0; i <= len - 5; i++) {
+int count = 0;
+for (int j = 0; j < 5; j++) {
+if (s[i + j] == '5') count++;
+}
+if (count < 2)
+return 0; // A block failed the rule
+}
+return 1;
+}
+%}
+%%
+[0-9]+ {
+char *s = strdup(yytext);
+int len = strlen(s);
+// i. Ends with 00
+if (len >= 2 && s[len - 2] == '0' && s[len - 1] == '0')
+printf("Ends with 00: %s\n", s);
+// ii. Contains three consecutive 222's (i.e., "222222")
+if (strstr(s, "222222"))
+printf("Contains three consecutive 222's: %s\n", s);
+// iii. Every block of five has at least two 5's
+if (at_least_two_fives(s))
+printf("Valid: every block of 5 contains at least two 5's: %s\n", s);
+// iv. Starts with 1 and binary value divisible by 5
+if (s[0] == '1' && modulo5(s) == 0)
+printf("Binary string divisible by 5: %s\n", s);
+// v. 10th symbol from right is 1
+if (len >= 10 && s[len - 10] == '1')
+printf("10th symbol from the right is 1: %s\n", s);
+// vi. 4-digit number with digit sum 9
+if (len == 4 && digit_sum(s) == 9)
+printf("4-digit number with digit sum 9: %s\n", s);
+// vii. 4-digit number with digits in ascending order
+if (len == 4 && is_ascending(s))
+printf("4-digit number with digits in ascending order: %s\n", s);
+free(s);
+}
+.|\n { /* Ignore other characters */ }
+%%
+int main() {
+yylex();
+return 0;
+}

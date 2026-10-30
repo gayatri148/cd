@@ -1,0 +1,275 @@
+#include <iostream>
+#include <vector>
+#include <map>
+#include <set>
+#include <string>
+#include <algorithm>
+
+using namespace std;
+
+// Grammar representation:
+// Non-terminals mapped to list of productions (each production is vector<string>)
+map<string, vector<vector<string>>> grammar;
+
+// FIRST and FOLLOW sets
+map<string, set<string>> FIRST, FOLLOW;
+
+// Terminals and Non-terminals
+set<string> terminals;
+set<string> nonTerminals;
+
+// Utility: Check if symbol is terminal
+bool isTerminal(const string &symbol) {
+    return terminals.count(symbol) > 0;
+}
+
+// Compute FIRST of a symbol (terminal or non-terminal)
+set<string> computeFirst(const string &symbol);
+
+// Compute FIRST of a production
+set<string> computeFirstOfProduction(const vector<string> &prod) {
+    set<string> result;
+    bool epsilon_in_prefix = true;
+
+    for (const string &sym : prod) {
+        set<string> first_sym = computeFirst(sym);
+        result.insert(first_sym.begin(), first_sym.end());
+        if (first_sym.count("ε")) {
+            // Remove epsilon temporarily
+            result.erase("ε");
+            epsilon_in_prefix = true;
+        } else {
+            epsilon_in_prefix = false;
+            break;
+        }
+}
+
+    if (epsilon_in_prefix) {
+        result.insert("ε");
+    }
+
+    return result;
+}
+
+// Compute FIRST sets for all symbols
+set<string> computeFirst(const string &symbol) {
+    // Terminal: FIRST is the symbol itself
+    if (isTerminal(symbol) || symbol == "ε") {
+        return {symbol};
+    }
+
+    if (FIRST.count(symbol)) {
+        return FIRST[symbol];
+    }
+
+    set<string> firstSet;
+
+    for (auto &prod : grammar[symbol]) {
+        // Compute FIRST of production
+        set<string> first_prod = computeFirstOfProduction(prod);
+        firstSet.insert(first_prod.begin(), first_prod.end());
+    }
+
+    FIRST[symbol] = firstSet;
+    return firstSet;
+}
+
+// Compute FOLLOW sets
+void computeFollow() {
+    // Initialize FOLLOW sets empty
+    for (auto &nt : nonTerminals) {
+        FOLLOW[nt] = {};
+    }
+    // Start symbol's FOLLOW contains $
+    FOLLOW["S"].insert("$");
+
+    bool changed = true;
+    while (changed) {
+        changed = false;
+for (auto &nt : nonTerminals) {
+            for (auto &prod : grammar[nt]) {
+                for (int i = 0; i < (int)prod.size(); i++) {
+                    string B = prod[i];
+                    if (nonTerminals.count(B)) {
+                        // Compute FIRST of beta
+                        set<string> first_beta;
+                        bool epsilon_in_beta = true;
+
+                        for (int j = i + 1; j < (int)prod.size(); j++) {
+                            set<string> first_sym = computeFirst(prod[j]);
+                            first_beta.insert(first_sym.begin(), first_sym.end());
+                            if (first_sym.count("ε")) {
+                                first_beta.erase("ε");
+                            } else {
+                                epsilon_in_beta = false;
+                                break;
+                            }
+                        }
+                        if (epsilon_in_beta) {
+                            // Add FOLLOW of nt to FOLLOW of B
+                            int before_size = FOLLOW[B].size();
+                            FOLLOW[B].insert(FOLLOW[nt].begin(), FOLLOW[nt].end());
+                            if (FOLLOW[B].size() > before_size)
+                                changed = true;
+                        }
+
+                        // Add FIRST(beta) \ {ε} to FOLLOW(B)
+                        int before_size = FOLLOW[B].size();
+                        first_beta.erase("ε");
+                        FOLLOW[B].insert(first_beta.begin(), first_beta.end());
+                        if (FOLLOW[B].size() > before_size)
+                            changed = true;
+                    }
+                }
+            }
+        }
+    }
+}
+// LL(1) Parsing Table (map: Non-terminal -> Terminal -> production index)
+map<string, map<string, int>> parsingTable;
+
+// Build LL(1) parsing table
+bool buildParsingTable() {
+    for (auto &nt : nonTerminals) {
+        for (int idx = 0; idx < (int)grammar[nt].size(); idx++) {
+            vector<string> prod = grammar[nt][idx];
+            set<string> first_prod = computeFirstOfProduction(prod);
+
+            for (const string &terminal : first_prod) {
+                if (terminal != "ε") {
+                    if (parsingTable[nt].count(terminal)) {
+                        cout << "Grammar is not LL(1) (conflict at " << nt << "," << terminal << ")\n";
+                        return false;
+                    }
+                    parsingTable[nt][terminal] = idx;
+                }
+            }
+            if (first_prod.count("ε")) {
+                for (const string &foll : FOLLOW[nt]) {
+                    if (parsingTable[nt].count(foll)) {
+                        cout << "Grammar is not LL(1) (conflict at " << nt << "," << foll << ")\n";
+                        return false;
+                    }
+                    parsingTable[nt][foll] = idx;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+// Parse input using LL(1) parsing table
+bool parseInput(const vector<string> &inputTokens) {
+    vector<string> stack = {"$", "S"};
+    int idx = 0;
+
+    while (!stack.empty()) {
+        string top = stack.back();
+
+stack.pop_back();
+
+        string current = (idx < (int)inputTokens.size()) ? inputTokens[idx] : "$";
+
+        if (top == current) {
+            if (top == "$") {
+                return true; // accept
+            }
+            idx++;
+        }
+        else if (isTerminal(top)) {
+            // Terminal mismatch
+            cout << "Error: unexpected token " << current << ", expected " << top << "\n";
+            return false;
+        }
+        else {
+            // Non-terminal: consult table
+            if (!parsingTable[top].count(current)) {
+                cout << "Error: no rule for [" << top << ", " << current << "]\n";
+                return false;
+            }
+            int prodIdx = parsingTable[top][current];
+            vector<string> prod = grammar[top][prodIdx];
+            // Push RHS in reverse order (except ε)
+            if (!(prod.size() == 1 && prod[0] == "ε")) {
+                for (auto it = prod.rbegin(); it != prod.rend(); ++it) {
+                    stack.push_back(*it);
+                }
+            }
+        }
+    }
+    return false;
+}
+int main() {
+    // Define terminals and non-terminals
+    terminals = {"a", "b", "$"};
+    nonTerminals = {"S", "A", "B"};
+
+    // Define grammar
+    // S -> A B
+    grammar["S"].push_back({"A", "B"});
+
+    // A -> a | ε
+    grammar["A"].push_back({"a"});
+    grammar["A"].push_back({"ε"});
+
+    // B -> b
+    grammar["B"].push_back({"b"});
+
+    // Compute FIRST sets
+    for (const auto &nt : nonTerminals) {
+        computeFirst(nt);
+    }
+
+    cout << "FIRST sets:\n";
+    for (const auto &nt : nonTerminals) {
+        cout << nt << ": { ";
+        for (const auto &s : FIRST[nt]) cout << s << " ";
+        cout << "}\n";
+    }
+
+    // Compute FOLLOW sets
+    computeFollow();
+
+    cout << "\nFOLLOW sets:\n";
+    for (const auto &nt : nonTerminals) {
+        cout << nt << ": { ";
+        for (const auto &s : FOLLOW[nt]) cout << s << " ";
+        cout << "}\n";
+    }
+
+    // Build parsing table
+    if (!buildParsingTable()) {
+        cout << "\nGrammar is not LL(1), aborting parsing.\n";
+  return 1;
+    }
+
+    cout << "\nParsing Table:\n";
+    for (auto &nt : nonTerminals) {
+        for (auto &t : terminals) {
+            if (parsingTable[nt].count(t)) {
+                int idx = parsingTable[nt][t];
+                cout << "M[" << nt << "," << t << "] = ";
+                for (auto &sym : grammar[nt][idx]) cout << sym << " ";
+                cout << "\n";
+            }
+        }
+    }
+
+    // Input string tokens (space separated)
+    cout << "\nEnter input tokens separated by spaces (end with $): ";
+    vector<string> inputTokens;
+    string token;
+    while (cin >> token) {
+        inputTokens.push_back(token);
+        if (token == "$") break;
+    }
+
+    cout << "\nParsing result: ";
+    if (parseInput(inputTokens)) {
+        cout << "Input string is accepted.\n";
+    } else {
+        cout << "Input string is rejected.\n";
+    }
+
+    return 0;
+}

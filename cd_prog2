@@ -1,0 +1,7 @@
+vim space.l;
+vim input.txt;
+lex space.l;
+gcc lex.yy.c -o space -ll;
+./space <input.txt> output.txt;
+vim output.txt;
+

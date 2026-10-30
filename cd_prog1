@@ -1,0 +1,5 @@
+vim tokens.l;
+vim input.txt;
+lex tokens.l;
+gcc lex.yy.c -o tokens -ll;
+./tokens < input.txt;

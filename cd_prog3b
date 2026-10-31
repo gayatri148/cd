@@ -1,46 +1,63 @@
 #include <iostream>
 #include <string>
 using namespace std;
+
 string input;
 int i = 0;
+
+// Function to implement A → a | ab
 bool A() {
-int back = i;
-// Try A → a
-if (input[i] == 'a') {
-i++;
-return true;
+    int back = i;
+
+    // Try production A → a
+    if (input[i] == 'a') {
+        i++;
+        return true;
+    }
+
+    // Backtrack
+    i = back;
+
+    // Try production A → ab
+    if (input[i] == 'a') {
+        i++;
+
+        if (input[i] == 'b') {
+            i++;
+            return true;
+        }
+    }
+
+    return false;
 }
-i = back;
-// Try A → ab
-if (input[i] == 'a') {
-i++;
-if (input[i] == 'b') {
-i++;
-return true;
-}
-}
-return false;
-}
+
+// Function to implement S → cAd
 bool S() {
-if (input[i] == 'c') {
-i++;
-if (A()) {
-if (input[i] == 'd') {
-i++;
-return true;
+    if (input[i] == 'c') {
+        i++;
+
+        if (A()) {
+            if (input[i] == 'd') {
+                i++;
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
-}
-}
-return false;
-}
+
 int main() {
-cout << "Enter input string: ";
-cin >> input;
-i = 0;
-if (S() && i == input.length()) {
-cout << "String accepted (Grammar B: A → a | ab)\n";
-} else {
-cout << "String rejected (Grammar B: A → a | ab)\n";
-}
-return 0;
+    cout << "Enter input string: ";
+    cin >> input;
+
+    i = 0;
+
+    if (S() && i == input.length()) {
+        cout << "String accepted (Grammar: A → a | ab)\n";
+    } else {
+        cout << "String rejected (Grammar: A → a | ab)\n";
+    }
+
+    return 0;
 }
